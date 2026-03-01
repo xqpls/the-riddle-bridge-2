@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Riddle Bridge</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+        background: #0d0a1a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 16px;
+        font-family: 'VT323', monospace;
+    }
+
+    
+    /* ═══════════════════════════════════════════
+       CRAZY ANIMATED WRAPPER
+    ═══════════════════════════════════════════ */
+    #wrapper {
+        display: flex;
+        flex-direction: column;
+        width: min(95vw, 960px);
+        background: #1a0f2b;
+        position: relative;
+        /* Animated border via outline trick + pseudo */
+        border: 3px solid transparent;
+        background-clip: padding-box;
+    }
+
+    /* Animated neon border using conic-gradient rotation */
+    #wrapper::before {
+        content: '';
+        position: absolute;
+        inset: -4px;
+        z-index: -1;
+        border-radius: 2px;
+        background: conic-gradient(
+            from var(--border-angle, 0deg),
+            #ff00ff,
+            #00ffff,
+            #ff00ff,
+            #ff6600,
+            #ff00ff,
+            #9900ff,
+            #ff00ff
+        );
+        animation: border-spin 3s linear infinite;
+    }
+    @property --border-angle {
+        syntax: '<angle>';
+        inherits: false;
+        initial-value: 0deg;
+    }
+    @keyframes border-spin {
+        to { --border-angle: 360deg; }
+    }
+
+    /* Inner glow breathing */
+    #wrapper::after {
+        content: '';
+        position: absolute;
+        inset: -4px;
+        z-index: -2;
+        border-radius: 2px;
+        background: conic-gradient(
+            from var(--border-angle, 0deg),
+            #ff00ff,
+            #00ffff,
+            #ff00ff,
+            #ff6600,
+            #ff00ff,
+            #9900ff,
+            #ff00ff
+        );
+        animation: border-spin 3s linear infinite, glow-breathe 2s ease-in-out infinite alternate;
+        filter: blur(18px);
+        opacity: 0.85;
+    }
+    @keyframes glow-breathe {
+        0%   { opacity: 0.5; filter: blur(14px); }
+        100% { opacity: 1;   filter: blur(28px); }
+    }
+
+    /* ── SCANLINE OVERLAY ── */
+    #scanlines {
+        position: absolute;
+        inset: 0;
+        z-index: 100;
+        pointer-events: none;
+        background: repeating-linear-gradient(
+            to bottom,
+            transparent 0px,
+            transparent 3px,
+            rgba(0,0,0,0.13) 3px,
+            rgba(0,0,0,0.13) 4px
+        );
+        animation: scanline-drift 8s linear infinite;
+    }
+    @keyframes scanline-drift {
+        0%   { background-position: 0 0; }
+        100% { background-position: 0 200px; }
+    }
+
+    /* ── CORNER RUNE GLYPHS ── */
+    .corner-rune {
+        position: absolute;
+        z-index: 101;
+        pointer-events: none;
+        font-family: 'VT323', monospace;
+        font-size: 22px;
+        color: #ff00ff;
+        text-shadow: 0 0 8px #ff00ff, 0 0 20px #ff00ff;
+        animation: rune-flicker 1.7s infinite;
+        line-height: 1;
+    }
+    .corner-rune:nth-child(1) { top: -14px;  left: -14px;  animation-delay: 0s; }
+    .corner-rune:nth-child(2) { top: -14px;  right: -14px; animation-delay: 0.4s; }
+    .corner-rune:nth-child(3) { bottom: -14px; left: -14px;  animation-delay: 0.8s; }
+    .corner-rune:nth-child(4) { bottom: -14px; right: -14px; animation-delay: 1.2s; }
+    @keyframes rune-flicker {
+        0%,100% { opacity: 1; text-shadow: 0 0 8px #ff00ff, 0 0 20px #ff00ff; }
+        15%     { opacity: 0.3; text-shadow: none; }
+        16%     { opacity: 1; }
+        55%     { opacity: 0.6; text-shadow: 0 0 4px #00ffff; }
+        56%     { opacity: 1; text-shadow: 0 0 8px #ff00ff, 0 0 20px #ff00ff; }
+    }
+
+    /* ── ELECTRIC SPARKS (canvas overlay) ── */
+    #spark-canvas {
+        position: absolute;
+        inset: 0;
+        z-index: 102;
+        pointer-events: none;
+    }
+
+    /* ── EMBER PARTICLES ── */
+    .ember {
+        position: absolute;
+        z-index: 99;
+        pointer-events: none;
+        border-radius: 50%;
+        animation: ember-rise linear infinite;
+    }
+    @keyframes ember-rise {
+        0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0.9; }
+        50%  { transform: translateY(-120px) translateX(var(--drift)) scale(0.7); opacity: 0.6; }
+        100% { transform: translateY(-240px) translateX(calc(var(--drift)*2)) scale(0.2); opacity: 0; }
+    }
+
+    /* ── SIDE GLITCH BARS ── */
+    .glitch-bar {
+        position: absolute;
+        z-index: 103;
+        pointer-events: none;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #ff00ff, #00ffff, transparent);
+        animation: glitch-slide linear infinite;
+        opacity: 0;
+    }
+    .glitch-bar.left  { left: -4px; width: 4px; height: 100%; 
+        background: linear-gradient(180deg, transparent, #ff00ff 30%, #00ffff 60%, transparent);
+        animation: glitch-bar-pulse 2.3s infinite; }
+    .glitch-bar.right { right: -4px; width: 4px; height: 100%;
+        background: linear-gradient(180deg, transparent, #9900ff 30%, #ff00ff 60%, transparent);
+        animation: glitch-bar-pulse 1.9s infinite reverse; }
+    @keyframes glitch-bar-pulse {
+        0%,100% { opacity: 0; transform: scaleY(0.3); }
+        40%     { opacity: 1; transform: scaleY(1); }
+        60%     { opacity: 0.6; transform: scaleY(0.8); }
+    }
+
+    /* ── WRAPPER SHAKE ON WRONG ANSWER (JS triggered) ── */
+    .wrapper-shake {
+        animation: shake 0.4s ease !important;
+    }
+    @keyframes shake {
+        0%,100% { transform: translateX(0); }
+        20%     { transform: translateX(-6px) rotate(-0.5deg); }
+        40%     { transform: translateX(6px) rotate(0.5deg); }
+        60%     { transform: translateX(-4px); }
+        80%     { transform: translateX(4px); }
+    }
+
+    /* ── WRAPPER FLASH ON CORRECT (JS triggered) ── */
+    .wrapper-flash::before {
+        background: conic-gradient(
+            from var(--border-angle, 0deg),
+            #00aaff, #0044ff, #00eeff, #0088ff, #00aaff
+        ) !important;
+        animation: border-spin 0.6s linear infinite, blue-flash-in 0.6s ease-out forwards !important;
+    }
+    .wrapper-flash::after {
+        background: conic-gradient(
+            from var(--border-angle, 0deg),
+            #00aaff, #0044ff, #00eeff, #0088ff, #00aaff
+        ) !important;
+        animation: border-spin 0.6s linear infinite, blue-glow-burst 0.6s ease-out forwards !important;
+    }
+    @keyframes blue-flash-in {
+        0%   { opacity: 1; }
+        100% { opacity: 1; }
+    }
+    @keyframes blue-glow-burst {
+        0%   { filter: blur(14px); opacity: 0.5; }
+        30%  { filter: blur(45px); opacity: 1; }
+        100% { filter: blur(18px); opacity: 0.85; }
+    }
+
+    
+    #game-scene {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 960 / 540;
+        overflow: hidden;
+        background: #b997ec;
+    }
+
+    #background {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        background-image: url('assets/images/background.png');
+        background-size: cover;
+        background-position: center;
+    }
+
+    /*HUD*/
+    #light-bar {
+        position: absolute;
+        top: 10px; left: 10px;
+        z-index: 20;
+        background: rgba(0,0,0,0.6);
+        padding: 5px 10px;
+        border-radius: 7px;
+    }
+    #light-bar-img { height: 34px; display: block; image-rendering: pixelated; }
+    #light-text { color: #44ff88; font-size: 13px; text-align: center; margin-top: 2px; }
+
+    @keyframes flicker { 0%,100%{opacity:1} 50%{opacity:.55} }
+    .light-low { animation: flicker .7s infinite; }
+
+    #level-display {
+        position: absolute;
+        top: 10px; right: 10px;
+        z-index: 20;
+        background: rgba(0,0,0,0.6);
+        padding: 5px 12px;
+        border-radius: 7px;
+        color: #66aaff;
+        font-size: clamp(14px, 2vw, 20px);
+    }
+
+    /* ─────────────────────────────────────────
+       RIDDLE PANEL — floats inside the scene,
+       transparent background, glow border only
+    ───────────────────────────────────────── */
+    #riddle-ui {
+        position: absolute;
+        top: 6%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 70%;
+        z-index: 40;
+        background: rgba(10, 4, 28, 0.18);
+        border: 2.5px solid #ff00ff;
+        border-radius: 10px;
+        padding: 10px 14px 8px;
+        animation: glow-pulse 2s infinite alternate;
+    }
+    #riddle-ui.hidden { display: none !important; }
+
+    @keyframes glow-pulse {
+        0%   { box-shadow: 0 0 10px #ff00ff, 0 0 22px #ff00ff55; }
+        100% { box-shadow: 0 0 22px #ff00ff, 0 0 55px #ff00ffaa; }
+    }
+
+    #riddle-header { display: flex; align-items: flex-start; gap: 10px; }
+    #riddle-icon { width: 36px; height: 36px; flex-shrink: 0; image-rendering: pixelated; }
+    #riddle-text {
+        color: #f8ccff;
+        font-size: clamp(13px, 1.9vw, 20px);
+        line-height: 1.4;
+        text-shadow: 0 0 6px #ff00ffbb;
+    }
+
+    /* ─────────────────────────────────────────
+       CHARACTER
+    ───────────────────────────────────────── */
+    #character {
+        position: absolute;
+        bottom: 24%;          /* sits on top of the stone platform */
+        width: 5.5%;
+        padding-bottom: 12%;
+        z-index: 10;
+        image-rendering: pixelated;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: bottom center;
+        background-image: url('assets/images/stand pose.png');
+    }
+
+    @keyframes walk-bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+    .walking { animation: walk-bounce .26s infinite; }
+
+    @keyframes fall-anim {
+        0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+        100% { transform: translateY(60%) rotate(90deg); opacity: 0; }
+    }
+    .falling { animation: fall-anim 1.8s ease-in forwards; }
+
+    /* ─────────────────────────────────────────
+       BRIDGE TILES — placed absolutely in scene
+    ───────────────────────────────────────── */
+    .bridge-tile {
+        position: absolute;
+        bottom: 21%;          
+        image-rendering: pixelated;
+        z-index: 8;
+        animation: tile-appear .5s ease-out forwards;
+    }
+    @keyframes tile-appear {
+        0%   { transform: translateY(-20px) scale(.7); opacity: 0; }
+        100% { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    /* ─────────────────────────────────────────
+       MISSING BRIDGE PART
+    ───────────────────────────────────────── */
+    #miss-part {
+        position: absolute;
+        bottom: 16.9%;        
+        right: 8%;
+        width: 12%;
+        image-rendering: pixelated;
+        z-index: 7;
+    }
+    #miss-part.hidden { display: none !important; }
+    @keyframes miss-fall {
+        0%   { transform: translateY(-30px); opacity: 0; }
+        60%  { opacity: 1; }
+        100% { transform: translateY(0); opacity: 1; }
+    }
+
+    /* ─────────────────────────────────────────
+       ANSWER BAR — sits BELOW the scene,
+       inside the same neon wrapper
+    ───────────────────────────────────────── */
+    #answer-bar {
+        width: 100%;
+        background: rgba(6, 2, 20, 0.97);
+        border-top: 2px solid #ff00ff55;
+        padding: 8px 14px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    #answer-bar.hidden { display: none !important; }
+
+    #answer-input {
+        width: 100%;
+        padding: 7px 13px;
+        background: rgba(0,0,0,0.8);
+        border: 2px solid #8800cc;
+        color: #f8ccff;
+        font-family: 'VT323', monospace;
+        font-size: clamp(14px, 1.9vw, 20px);
+        border-radius: 5px;
+        outline: none;
+    }
+    #answer-input::placeholder { color: #6622aa; }
+    #answer-input:focus { border-color: #ff00ff; box-shadow: 0 0 8px #ff00ff66; }
+
+    #btn-row { display: flex; gap: 8px; }
+
+    .act-btn {
+        flex: 1;
+        position: relative;
+        padding: 8px 10px;
+        border: 2px solid;
+        border-radius: 5px;
+        font-family: 'VT323', monospace;
+        font-size: clamp(14px, 1.9vw, 20px);
+        letter-spacing: 1px;
+        cursor: pointer;
+        overflow: hidden;
+        transition: transform .1s;
+    }
+    .act-btn:hover:not(:disabled)  { transform: scale(1.03); }
+    .act-btn:active:not(:disabled) { transform: scale(.97); }
+    .act-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .act-btn .bg-img {
+        position: absolute; inset: 0;
+        width: 100%; height: 100%;
+        object-fit: cover; opacity: .75;
+        image-rendering: pixelated;
+    }
+    .act-btn span { position: relative; z-index: 1; color: #fff; text-shadow: 1px 1px 4px #000, 0 0 6px #000; }
+
+    #answer-btn   { background: rgba(15,40,165,.8);  border-color: #4477ff; }
+    #sacrifice-btn{ background: rgba(135,12,12,.8);  border-color: #ff4422; }
+
+    .fb { font-size: clamp(12px, 1.6vw, 16px); text-align: center; }
+    .fb.hidden { display: none !important; }
+    #error-msg    { color: #ff4444; }
+    #sacrifice-msg{ color: #ffaa33; }
+
+    /* ─────────────────────────────────────────
+       DEATH / WIN overlays — cover whole wrapper
+    ───────────────────────────────────────── */
+    .overlay {
+        position: absolute; inset: 0; z-index: 50;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        background: rgba(0,0,0,0.93);
+    }
+    .overlay.hidden { display: none !important; }
+    /* wrapper needs relative positioning for overlays to cover it */
+    #wrapper { position: relative; isolation: isolate; }
+
+    .ov-img { width: 40%; image-rendering: pixelated; }
+    .ov-msg { font-size: clamp(14px, 2.5vw, 28px); margin-top: 12px; text-align: center; padding: 0 16px; }
+    .ov-btn {
+        font-family: 'VT323', monospace;
+        font-size: clamp(14px, 2.2vw, 24px);
+        margin-top: 16px; padding: 7px 24px;
+        border: 2px solid; border-radius: 4px;
+        background: rgba(0,0,0,.5); cursor: pointer;
+        transition: transform .1s, background .2s;
+    }
+    .ov-btn:hover { transform: scale(1.07); }
+    .death-col { color: #ff4444; border-color: #ff4444; }
+    .death-col:hover { background: #2d0000; }
+    .win-col   { color: #44ff88; border-color: #44ff88; }
+    .win-col:hover { background: #002d18; }
+
+    @keyframes lavaFlow { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+    .lava-bg {
+        background: linear-gradient(45deg,#8B0000,#FF4500,#FF8C00,#FFD700) !important;
+        background-size: 400% 400% !important;
+        animation: lavaFlow 2.4s infinite alternate;
+    }
+    </style>
+</head>
+<body>
+
+<!-- ONE neon-bordered wrapper: scene on top, answer bar below -->
+<div id="wrapper">
+
+    <!-- ── CRAZY ANIMATED WRAPPER DECORATIONS ── -->
+    <div id="scanlines"></div>
+    <canvas id="spark-canvas"></canvas>
+    <div class="corner-rune">⚡</div>
+    <div class="corner-rune">☠</div>
+    <div class="corner-rune">⚡</div>
+    <div class="corner-rune">☠</div>
+    <div class="glitch-bar left"></div>
+    <div class="glitch-bar right"></div>
+
+    <!-- ── GAME SCENE ── -->
+    <div id="game-scene">
+
+        <div id="background"></div>
+
+        <!-- HUD -->
+        <div id="light-bar">
+            <img id="light-bar-img" src="assets/images/light 5.png" alt="Light">
+            <div id="light-text">LIGHT: 5/5</div>
+        </div>
+        <div id="level-display">LEVEL: 1/10</div>
+
+        <!-- Riddle question panel (transparent, top-centre of scene) -->
+        <div id="riddle-ui" class="hidden">
+            <div id="riddle-header">
+                <img id="riddle-icon" src="assets/images/riddle icon.png" alt="">
+                <p id="riddle-text"></p>
+            </div>
+        </div>
+
+        <!-- Character -->
+        <div id="character"></div>
+
+        <!-- Bridge tiles injected by JS -->
+
+        <!-- Missing bridge part -->
+        <img id="miss-part" src="assets/images/bridge miss part.png" alt="" class="hidden">
+
+    </div><!-- #game-scene -->
+
+    <!-- ── ANSWER BAR (below the scene, inside neon border) ── -->
+    <div id="answer-bar" class="hidden">
+        <input type="text" id="answer-input" placeholder="Type your answer here…" autocomplete="off" spellcheck="false">
+        <div id="btn-row">
+            <button id="answer-btn" class="act-btn">
+                <img src="assets/images/answer icon.png" alt="" class="bg-img">
+                <span>ANSWER</span>
+            </button>
+            <button id="sacrifice-btn" class="act-btn">
+                <img src="assets/images/sacrifice light icon.png" alt="" class="bg-img">
+                <span>SACRIFICE LIGHT</span>
+            </button>
+        </div>
+        <p id="error-msg"    class="fb hidden">Wrong answer — try again or sacrifice a light.</p>
+        <p id="sacrifice-msg" class="fb hidden">You sacrificed one light!</p>
+    </div>
+
+    <!-- Death overlay covers full wrapper -->
+    <div id="death-screen" class="overlay hidden">
+        <img src="assets/images/you died.png" alt="You Died" class="ov-img">
+        <p id="death-msg" class="ov-msg hidden"></p>
+        <button class="ov-btn death-col" onclick="location.reload()">RESTART</button>
+    </div>
+
+    <!-- Win overlay covers full wrapper -->
+    <div id="win-screen" class="overlay hidden">
+        <img src="assets/images/label.png" alt="You Win" class="ov-img">
+        <p id="win-msg" class="ov-msg"></p>
+        <button class="ov-btn win-col" onclick="location.reload()">PLAY AGAIN</button>
+    </div>
+
+</div><!-- #wrapper -->
+
+<script>
+// ═══════════════════════════════════════════════
+//  CONFIG  (all x/y in 960×540 design space)
+// ═══════════════════════════════════════════════
+const TOTAL   = 10;
+const MAX_LT  = 5;
+const WALK_MS = 850;
+
+// Gap: character crosses from left platform to right platform.
+// Left platform ends at ~22%, right starts at ~75% of scene width.
+const SCENE_W  = 960;
+const SCENE_H  = 540;
+const GAP_X0   = 210;   // gap left edge (design px)
+const GAP_X1   = 720;   // gap right edge
+const GAP_W    = GAP_X1 - GAP_X0;          // 510
+const STEP     = GAP_W / TOTAL;             // 51 per step
+const TILE_W   = 46;
+const TILE_H   = 38;
+const CHAR_START = 150; // character start x (design px, on left platform)
+
+function px(designX){ return (designX/SCENE_W*100)+'%'; }
+function py(designY){ return (designY/SCENE_H*100)+'%'; }
+
+const IMGS = {
+    lights: Array.from({length:6},(_,i)=>`assets/images/light ${i}.png`),
+    tile:   'assets/images/bridge miss part.png',
+    stand:  'assets/images/stand pose.png',
+    walk1:  'assets/images/first step pose.png',
+    walk2:  'assets/images/second step pose.png',
+};
+
+const RIDDLES = [
+    {q:"Q: What is always in front of you but cant be seen?",      a:["future"]},
+    {q:"Q: What has an eye but cannot blink?",                     a:["needle"]},
+    {q:"Q: What has a head and a tail but no body?",               a:["coin"]},
+    {q:"Q: What goes up and down but doesnt move?",                a:["stairs"]},
+    {q:"Q: What has legs but doesnt walk?",                        a:["table"]},
+    {q:"Q: What comes down but never goes up?",                    a:["rain"]},
+    {q:"Q: What has many keys but cant open a single door?",       a:["piano"]},
+    {q:"Q: What has a neck but no head, and wears a cap?",         a:["bottle"]},
+    {q:"Q: What can fill a room but takes up no space?",           a:["light"]},
+    {q:"Q: Did you Enjoy the game ?",                              a:["secret"]},
+];
+
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+const G = { level:0, light:MAX_LT, charX:CHAR_START, walking:false, dead:false };
+
+// ═══════════════════════════════════════════════
+//  DOM
+// ═══════════════════════════════════════════════
+const scene     = document.getElementById('game-scene');
+const riddleUI  = document.getElementById('riddle-ui');
+const riddleTxt = document.getElementById('riddle-text');
+const answerBar = document.getElementById('answer-bar');
+const answerIn  = document.getElementById('answer-input');
+const answerBtn = document.getElementById('answer-btn');
+const sacrifBtn = document.getElementById('sacrifice-btn');
+const errMsg    = document.getElementById('error-msg');
+const sacrMsg   = document.getElementById('sacrifice-msg');
+const ltImg     = document.getElementById('light-bar-img');
+const ltTxt     = document.getElementById('light-text');
+const lvlDisp   = document.getElementById('level-display');
+const charEl    = document.getElementById('character');
+const missPart  = document.getElementById('miss-part');
+const deathScr  = document.getElementById('death-screen');
+const winScr    = document.getElementById('win-screen');
+const deathMsg  = document.getElementById('death-msg');
+const winMsg    = document.getElementById('win-msg');
+
+// ═══════════════════════════════════════════════
+//  HUD
+// ═══════════════════════════════════════════════
+function refreshHUD(){
+    const i = Math.min(Math.max(G.light,0),MAX_LT);
+    ltImg.src = IMGS.lights[i];
+    ltTxt.textContent = `LIGHT: ${G.light}/${MAX_LT}`;
+    ltImg.classList.toggle('light-low', G.light <= 2);
+    lvlDisp.textContent = `LEVEL: ${G.level+1}/${TOTAL}`;
+}
+
+// ═══════════════════════════════════════════════
+//  RIDDLE PANEL
+// ═══════════════════════════════════════════════
+function openRiddle(){
+    if(G.level >= TOTAL){ doWin(); return; }
+    riddleTxt.textContent = RIDDLES[G.level].q;
+    answerIn.value = '';
+    errMsg.classList.add('hidden');
+    sacrMsg.classList.add('hidden');
+    answerBtn.disabled = false;
+    sacrifBtn.disabled = false;
+    riddleUI.classList.remove('hidden');
+    answerBar.classList.remove('hidden');
+    refreshHUD();
+    setTimeout(()=>answerIn.focus(),100);
+}
+
+function closeRiddle(){
+    riddleUI.classList.add('hidden');
+    answerBar.classList.add('hidden');
+}
+
+// ═══════════════════════════════════════════════
+//  ANSWER
+// ═══════════════════════════════════════════════
+function clean(s){ return s.toLowerCase().trim().replace(/[^a-z0-9 ]/g,''); }
+function correct(inp,ans){ return ans.some(a=>clean(a)===clean(inp)); }
+
+// ═══════════════════════════════════════════════
+//  LIGHT
+// ═══════════════════════════════════════════════
+function spendLight(){
+    if(G.light <= 0){ G.dead=true; return false; }
+    G.light--;
+    refreshHUD();
+    sacrMsg.classList.remove('hidden');
+    setTimeout(()=>sacrMsg.classList.add('hidden'),2200);
+    return true;
+}
+
+// ═══════════════════════════════════════════════
+//  BRIDGE TILE
+// ═══════════════════════════════════════════════
+function dropTile(stepIdx){
+    const tileX = GAP_X0 + stepIdx * STEP + (STEP - TILE_W)/2;
+    const img = document.createElement('img');
+    img.src = IMGS.tile;
+    img.className = 'bridge-tile';
+    img.alt = '';
+    img.style.left   = px(tileX);
+    img.style.width  = px(TILE_W);
+    img.style.height = py(TILE_H);
+    scene.appendChild(img);
+}
+
+// ═══════════════════════════════════════════════
+//  MISSING PART
+// ═══════════════════════════════════════════════
+function showMiss(){
+    missPart.classList.remove('hidden','miss-active');
+    void missPart.offsetWidth;
+    missPart.classList.add('miss-active');
+}
+function hideMiss(){ missPart.classList.add('hidden'); missPart.classList.remove('miss-active'); }
+
+// ═══════════════════════════════════════════════
+//  WALK ANIMATION
+// ═══════════════════════════════════════════════
+function walk(ms, toDesignX){
+    return new Promise(resolve=>{
+        const fromX = G.charX;
+        let t0=null, frame=1;
+        charEl.classList.add('walking');
+        const iv = setInterval(()=>{
+            frame = frame===1?2:1;
+            charEl.style.backgroundImage=`url('${frame===1?IMGS.walk1:IMGS.walk2}')`;
+        },200);
+        function tick(ts){
+            if(!t0) t0=ts;
+            const p = Math.min((ts-t0)/ms,1);
+            const cx = fromX + (toDesignX-fromX)*p;
+            charEl.style.left = px(cx);
+            if(p<1){ requestAnimationFrame(tick); }
+            else{
+                clearInterval(iv);
+                charEl.classList.remove('walking');
+                charEl.style.backgroundImage=`url('${IMGS.stand}')`;
+                charEl.style.left=px(toDesignX);
+                G.charX=toDesignX;
+                resolve();
+            }
+        }
+        requestAnimationFrame(tick);
+    });
+}
+
+// ═══════════════════════════════════════════════
+//  STEP LOGIC
+// ═══════════════════════════════════════════════
+async function doStep(success, sacrifice=false){
+    if(G.walking||G.dead) return;
+    G.walking=true;
+    answerBtn.disabled=true;
+    sacrifBtn.disabled=true;
+    closeRiddle();
+
+    if(!success){
+        await walk(WALK_MS*0.5, G.charX + STEP*0.5);
+        charEl.classList.add('falling');
+        setTimeout(()=>doDeath(true), 1800);
+        return;
+    }
+
+    // Drop tile for this step first, then walk over it
+    dropTile(G.level);
+    if(!sacrifice && window._wrapperFlash) window._wrapperFlash();
+    if(sacrifice) showMiss();
+
+    await walk(WALK_MS, G.charX + STEP);
+    hideMiss();
+
+    G.walking=false;
+    G.level++;
+    if(G.level >= TOTAL) doWin();
+    else setTimeout(openRiddle, 700);
+}
+
+// ═══════════════════════════════════════════════
+//  DEATH / WIN
+// ═══════════════════════════════════════════════
+function doDeath(lava=false){
+    G.dead=true;
+    deathScr.classList.remove('hidden');
+    if(lava){
+        deathScr.classList.add('lava-bg');
+        deathMsg.textContent='YOU FELL INTO THE LAVA!';
+        deathMsg.classList.remove('hidden');
+    }
+}
+
+function doWin(){
+    let m='CONGRATULATIONS! YOU CROSSED THE BRIDGE!';
+    if(G.light===0)     m='YOU BARELY MADE IT! THE LAVA ALMOST GOT YOU...';
+    else if(G.light<=2) m='YOU MADE IT! BUT IT WAS A CLOSE CALL...';
+    else if(G.light>=4) m='EXCELLENT! YOU CROSSED WITH MOST OF YOUR LIGHT!';
+    winMsg.textContent=m;
+    winScr.classList.remove('hidden');
+}
+
+// ═══════════════════════════════════════════════
+//  EVENTS
+// ═══════════════════════════════════════════════
+answerBtn.addEventListener('click',()=>{
+    if(G.walking||G.dead) return;
+    const v=answerIn.value.trim();
+    if(!v) return;
+    if(correct(v, RIDDLES[G.level].a)){
+        errMsg.classList.add('hidden');
+        doStep(true,false);
+    } else {
+        errMsg.classList.remove('hidden');
+    }
+});
+
+sacrifBtn.addEventListener('click',()=>{
+    if(G.walking||G.dead) return;
+    if(G.light <= 0){
+        // No light left — immediate lava death
+        closeRiddle();
+        G.dead = true;
+        doDeath(true);
+        return;
+    }
+    const ok=spendLight();
+    doStep(ok,ok);
+});
+
+answerIn.addEventListener('keydown',e=>{ if(e.key==='Enter') answerBtn.click(); });
+
+// ═══════════════════════════════════════════════
+//  WRAPPER CRAZY ANIMATIONS
+// ═══════════════════════════════════════════════
+(function(){
+    const wrapper = document.getElementById('wrapper');
+
+    // ── EMBERS ──
+    function spawnEmber(){
+        const e = document.createElement('div');
+        e.className = 'ember';
+        const size = 3 + Math.random() * 5;
+        const hue = Math.random() < 0.5 ? '300' : '0,' + (Math.random()*60|0);
+        const colors = ['#ff00ff','#ff6600','#ff0055','#cc00ff','#ff3300','#00ffff'];
+        e.style.cssText = `
+            width:${size}px; height:${size}px;
+            background:${colors[Math.floor(Math.random()*colors.length)]};
+            box-shadow:0 0 ${size*2}px ${colors[Math.floor(Math.random()*colors.length)]};
+            bottom:0;
+            left:${Math.random()*100}%;
+            --drift:${(Math.random()-0.5)*60}px;
+            animation-duration:${1.5+Math.random()*3}s;
+            animation-delay:${Math.random()*2}s;
+        `;
+        wrapper.appendChild(e);
+        setTimeout(()=>e.remove(), (5+Math.random()*2)*1000);
+    }
+    setInterval(spawnEmber, 180);
+
+    // ── ELECTRIC SPARKS (canvas) ──
+    const canvas = document.getElementById('spark-canvas');
+    const ctx = canvas.getContext('2d');
+    function resizeCanvas(){
+        canvas.width  = wrapper.offsetWidth;
+        canvas.height = wrapper.offsetHeight;
+    }
+    new ResizeObserver(resizeCanvas).observe(wrapper);
+    resizeCanvas();
+
+    const sparks = [];
+    function addSpark(){
+        // Spark runs along the border edges
+        const edge = Math.floor(Math.random()*4); // 0=top,1=right,2=bottom,3=left
+        let x, y, dx, dy;
+        const W = canvas.width, H = canvas.height;
+        if(edge===0){ x=Math.random()*W; y=0;  dx=(Math.random()-0.5)*4; dy=Math.random()*2+1; }
+        else if(edge===1){ x=W; y=Math.random()*H; dx=-(Math.random()*2+1); dy=(Math.random()-0.5)*4; }
+        else if(edge===2){ x=Math.random()*W; y=H; dx=(Math.random()-0.5)*4; dy=-(Math.random()*2+1); }
+        else{ x=0; y=Math.random()*H; dx=Math.random()*2+1; dy=(Math.random()-0.5)*4; }
+        const colors = ['#ff00ff','#00ffff','#ffffff','#cc44ff','#ff6600'];
+        sparks.push({ x, y, dx, dy, life:1, color:colors[Math.floor(Math.random()*colors.length)], size:1.5+Math.random()*2 });
+    }
+    function animateSparks(){
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        if(Math.random()<0.15) addSpark();
+        sparks.forEach((s,i)=>{
+            s.x += s.dx; s.y += s.dy;
+            s.life -= 0.018;
+            if(s.life<=0){ sparks.splice(i,1); return; }
+            ctx.save();
+            ctx.globalAlpha = s.life;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = s.color;
+            ctx.fillStyle = s.color;
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.size, 0, Math.PI*2);
+            ctx.fill();
+            // Trail
+            ctx.globalAlpha = s.life*0.3;
+            ctx.beginPath();
+            ctx.arc(s.x - s.dx*3, s.y - s.dy*3, s.size*0.5, 0, Math.PI*2);
+            ctx.fill();
+            ctx.restore();
+        });
+        requestAnimationFrame(animateSparks);
+    }
+    animateSparks();
+
+    // Periodic burst of sparks
+    setInterval(()=>{
+        for(let i=0;i<8;i++) setTimeout(addSpark, i*40);
+    }, 2000);
+})();
+
+// ── SHAKE ON WRONG ANSWER ──
+const _errShow = errMsg.classList.remove.bind(errMsg.classList);
+document.getElementById('answer-btn').addEventListener('click', ()=>{
+    
+});
+const wrapperEl = document.getElementById('wrapper');
+new MutationObserver(()=>{
+    if(!errMsg.classList.contains('hidden')){
+        wrapperEl.classList.remove('wrapper-shake','wrapper-flash');
+        void wrapperEl.offsetWidth;
+        wrapperEl.classList.add('wrapper-shake');
+        setTimeout(()=>wrapperEl.classList.remove('wrapper-shake'),500);
+    }
+}).observe(errMsg, {attributes:true, attributeFilter:['class']});
+
+// ── FLASH ON CORRECT STEP ──
+const _origDropTile = dropTile;
+window._wrapperFlash = function(){
+    wrapperEl.classList.remove('wrapper-shake','wrapper-flash');
+    void wrapperEl.offsetWidth;
+    wrapperEl.classList.add('wrapper-flash');
+    setTimeout(()=>wrapperEl.classList.remove('wrapper-flash'), 700);
+};
+window.onload=function(){
+    charEl.style.left = px(CHAR_START);
+    charEl.style.backgroundImage = `url('${IMGS.stand}')`;
+    G.charX = CHAR_START;
+    refreshHUD();
+    setTimeout(openRiddle, 900);
+};
+</script>
+</body>
+</html>

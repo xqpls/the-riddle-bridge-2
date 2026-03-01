@@ -1,0 +1,187 @@
+/* Custom styles to enforce pixelated look and handle background sizing */
+@font-face {
+    font-family: 'VT323';
+    src: url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+}
+
+.pixelated {
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+}
+
+.riddle-text {
+    font-family: 'VT323', monospace;
+}
+
+/* Fixed game size for pixel art integrity */
+#game-container {
+    width: 960px;
+    height: 600px;
+    position: relative;
+    overflow: hidden;
+    border: 4px solid #0a0a0a;
+    box-shadow: 0 0 40px rgba(100, 0, 100, 0.8);
+    background: #1a0f2b;
+}
+
+/* Background styling */
+#background {
+    background-image: url('assets/images/background.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* Bridge base styling */
+#bridge-base {
+    background-image: url('assets/images/bridge.png');
+    background-size: cover;
+    background-position: center;
+    mask-image: linear-gradient(to top, transparent 30%, black 70%);
+    -webkit-mask-image: linear-gradient(to top, transparent 30%, black 70%);
+}
+
+.ui-glow {
+    box-shadow: 0 0 15px #ff00ff, 0 0 30px #ff00ff, 0 0 45px #ff00ff;
+    animation: glow-pulse 2s infinite alternate;
+}
+
+@keyframes glow-pulse {
+    0% { box-shadow: 0 0 15px #ff00ff, 0 0 30px #ff00ff; }
+    100% { box-shadow: 0 0 25px #ff00ff, 0 0 50px #ff00ff, 0 0 75px #ff00ff; }
+}
+
+/* LAVA DEATH SCREEN EFFECT */
+.lava-background {
+    background: linear-gradient(45deg, #8B0000, #FF4500, #FF8C00, #FFD700);
+    animation: lavaFlow 3s infinite alternate;
+    background-size: 400% 400%;
+}
+
+@keyframes lavaFlow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* Character animations */
+@keyframes walk {
+    0% { transform: translateX(0) translateY(0); }
+    25% { transform: translateX(2px) translateY(-3px); }
+    50% { transform: translateX(0) translateY(0); }
+    75% { transform: translateX(-2px) translateY(-3px); }
+    100% { transform: translateX(0) translateY(0); }
+}
+
+.walking {
+    animation: walk 0.3s infinite;
+}
+
+/* Bridge tile animations */
+@keyframes tile-appear {
+    0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+    50% { transform: scale(1.1) rotate(-90deg); opacity: 0.7; }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+.bridge-tile {
+    animation: tile-appear 0.8s ease-out forwards;
+}
+
+/* Missing part animations */
+@keyframes miss-part-fall {
+    0% { transform: translateY(-100px) rotate(0deg); opacity: 0; }
+    50% { transform: translateY(0) rotate(180deg); opacity: 1; }
+    100% { transform: translateY(0) rotate(360deg); opacity: 1; }
+}
+
+
+
+
+/* Fall animation */
+@keyframes fall {
+    0% { transform: translateY(0) rotate(0deg); }
+    100% { transform: translateY(500px) rotate(90deg); opacity: 0; }
+}
+
+.falling {
+    animation: fall 2s ease-in forwards;
+}
+
+/* Light bar animations */
+@keyframes light-flicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+.light-low {
+    animation: light-flicker 1s infinite;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+    #game-container {
+        width: 800px;
+        height: 500px;
+    }
+}
+
+@media (max-width: 768px) {
+    #game-container {
+        width: 100%;
+        height: 400px;
+        max-width: 600px;
+    }
+    
+    #character {
+        width: 60px;
+        height: 120px;
+        bottom: 120px;
+        left: 100px;
+    }
+    
+    #bridge-container {
+        bottom: 120px;
+        left: 200px;
+    }
+    
+    #miss-part {
+        bottom: 20px;
+        left: 450px;
+    }
+}
+
+@media (max-width: 480px) {
+    #game-container {
+        height: 350px;
+    }
+    
+    #character {
+        width: 50px;
+        height: 100px;
+        bottom: 100px;
+        left: 80px;
+    }
+    
+    #bridge-container {
+        bottom: 100px;
+        left: 150px;
+    }
+    
+    #miss-part {
+        bottom: 80px;
+        left: 350px;
+        width: 80px;
+        height: 60px;
+    }
+    
+    #riddle-ui {
+        width: 95%;
+        padding: 1rem;
+    }
+    
+    .riddle-text {
+        font-size: 0.9rem;
+    }
+}
